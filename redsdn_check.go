@@ -9,12 +9,16 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/ootw/redsdn-check/redsdn"
+	"time"
+	"io"
 )
 
 const (
-	equalSign     = "="
-	logPathPrefix = "logpath="
-	checkFileName = "checkFN="
+	equalSign            = "="
+	logPathPrefix        = "logpath="
+	checkFileName        = "checkFN="
+	bit           uint64 = 1
+	unit          uint32 = 64
 )
 
 func main() {
@@ -42,15 +46,17 @@ func main() {
 	defer file.Close()
 	reader := bufio.NewReader(file)
 	size := reader.Size()
-	defer logger.Printf("文件【%s】大小【%d】bytes", fileName, size)
 	i := 1
 	for {
 		var len uint16
-		err := binary.Read(reader, binary.BigEndian, &len)
+		err := binary.Read(reader, binary.LittleEndian, &len)
 		if err != nil {
+			if io.EOF == err {
+				break
+			}
 			logger.Fatalf("读取【len】异常:%v", err)
 		}
-		logger.Printf("第【%d】次读取【%d】长度的数据", i, len)
+		//logger.Printf("第【%d】次读取【%d】长度的数据", i, len)
 		i++
 		buf := make([]byte, len)
 		readLen, bufErr := reader.Read(buf)
@@ -58,8 +64,8 @@ func main() {
 			logger.Fatalf("读取【data】异常:%v", bufErr)
 		}
 		if uint16(readLen) != len {
-			logger.Printf("读取【data】:设定数据长度与读取数据长度不相等:【%d】!=【%d】", len, readLen)
-			logger.Println("重置reader")
+			//logger.Printf("读取【data】:设定数据长度与读取数据长度不相等:【%d】!=【%d】", len, readLen)
+			//logger.Println("重置reader")
 			reader.Reset(file)
 			size += reader.Size()
 			newBuf := make([]byte, len-uint16(readLen))
@@ -71,6 +77,7 @@ func main() {
 		}
 		ParseProtoMessage(buf, logger)
 	}
+	logger.Printf("文件【%s】大小【%d】bytes", fileName, size)
 }
 
 func ParseProtoMessage(buf []byte, logger *log.Logger) {
@@ -92,6 +99,33 @@ func ParseProtoMessage(buf []byte, logger *log.Logger) {
 	} else if message.GetLinkEvent() != nil {
 		logger.Println(message.GetLinkEvent().String())
 	} else if message.GetStatData() != nil {
-		logger.Println(message.GetStatData().String())
+		statData := message.GetStatData()
+		itemValue := statData.GetItemValue()
+		dataValues := itemValue.GetDataValues()
+		timestamp := statData.GetTimestamp()
+		for _, dataValue := range dataValues {
+			bitmapValues := dataValue.GetBitmapValues()
+			sum := dataValue.GetSum()
+			var packetIds []uint64
+			for _, bitmapValue := range bitmapValues {
+				idx := bitmapValue.GetIndex()
+				bitmap := bitmapValue.GetBitMap()
+				var i uint32
+				for i = 0; i < unit; i++ {
+					if (bitmap & (bit << i)) != 0 {
+						packetId := uint64(idx*unit + i)
+						packetIds = append(packetIds, packetId)
+					}
+				}
+			}
+			sec := timestamp / 1000
+			nsec := timestamp % 1000 * 1000000
+			time := time.Unix(int64(sec), int64(nsec)).Format("2006-01-02 15:04:05.000")
+			if int(sum) != len(packetIds) {
+				logger.Printf("%s index=[%d] sum=[%d] size=[%d]KByte packetIds=%v",
+					time, dataValue.GetIndex(), sum, dataValue.GetSize(), packetIds)
+			}
+		}
+		//logger.Println(message.GetStatData().String())
 	}
 }
