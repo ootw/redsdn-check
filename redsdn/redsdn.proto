@@ -1,0 +1,302 @@
+syntax ="proto2";
+
+//package RedSDN;
+
+//option java_package = "com.butel.data.analyses.client.model.protobuf";
+
+//option java_outer_classname = "SDNMessage";
+
+//golang配置
+package redsdn;
+
+//=============================================================================================================================
+//物理链路基础信息
+//@since 1.0
+message ProtoPhysicalLinkInfo {
+    required string physical_link_id = 1;   //物理链路 ID
+    required uint32 direction = 2;          //方向
+    required uint32 local_net_type = 3;     //本地网络类型
+    required string local_addr = 4;         //本地 IP
+    required uint32 dest_net_type = 5;      //目标网络类型
+    required string dest_addr = 6;          //目标 IP
+    required uint32 role_type = 7;          //角色类型
+    required uint64 tick_time = 8;
+    required uint64 utc_time = 9;
+}
+//=============================================================================================================================
+//物理链路质量
+//@since 1.0
+message ProtoPhysicalLinkQuality {
+
+    //物理链路质量变化趋势
+    //enum QualityTrend {
+    //    BETTER = 0;     //变好
+    //    WORSE = 1;      //变坏
+    //    UNKNOWN = 2;    //未知
+    //}
+
+    required string physical_link_id = 1;                   //物理链路 ID
+	optional uint32 idx = 2;								//索引(仿真机调整:一次递增1，质量计算：同ACK的序号, 多链路均衡：每做一次均衡递增1)
+    required uint32 rtt = 3;                                //延时时间，单位 ms
+    required uint32 loss_rate = 4;                          //丢包率，单位千分之
+    required uint32 jitter = 5;	                            //网络抖动，单位 ms
+    required uint32 direction = 6;                          //方向
+    required uint32 band_width = 7;                         //带宽，单位 KByte
+    required uint32 alloc_band_width = 8;					//有效带宽，单位 KByte
+    required uint32 max_consecutive_loss_packet_sum = 9;    //最大连续丢包，单位个
+    required uint32 max_unordered_packet_sum = 10;          //最大乱序包数，单位个
+    required uint32 rtt_level = 11;                         //延时分档值
+    required uint32 loss_rate_level = 12;                   //丢包率分档值
+    required sint32 stability_factor = 13;                  //链路稳定系数(<0整数,越小质量越差)
+    required uint32 trend = 14;								//链路质量变化趋势(0 变好，1 变坏， 2 未知)
+	required sint32 enable_flag = 15;						//启用标志(>0 负载均衡后使用，具体数字表示链路使用的优先级; -1 质量差启用; -2 闪断启用)
+    required uint64 tick_time = 16;
+    required uint64	utc_time = 17;                          //事件发生时间
+}
+//=============================================================================================================================
+//IP 列表
+//@since 1.0
+message ProtoNicList {
+
+    message NicInfo {
+        required string id = 1;
+        required string ip = 2;
+    }
+	repeated NicInfo nic = 1;
+}
+
+//=============================================================================================================================
+//用户基础信息汇报
+//@since 1.0
+message ProtoUserInfo {
+    required uint64 user_id = 1;
+    required uint32 user_type = 2;
+    required uint32 device_type = 3;
+    required string os = 4;
+    required string software_version = 5;
+    required uint64 tick_time = 6;
+    required uint64 utc_time = 7;
+}
+//=============================================================================================================================
+//@since 1.0
+message ProtoEndPointAddress {
+
+    //IP 协议版本枚举
+    enum IPVersion {
+        V4 = 0;
+        V6 = 1;
+    }
+
+    required IPVersion version = 1 [default = V4];
+    required string ip = 2;
+    required uint32 port = 3;
+}
+
+//Relay 信息汇报
+//@since 1.0
+message ProtoRelayInfo {
+    required uint32 index = 1;                                      //Relay索引
+    required string relay_name = 2;                                 //Relay名字
+    required uint32 idc_id = 3;                                     //机房id
+    required string domain = 4;                                     //Relay地域
+    required uint32 domain_index = 5;                               //地域区位码
+    required string isp = 6;                                        //Relay运营商
+    required uint32 isp_index = 7;                                  //运营商统一编码
+
+    required ProtoEndPointAddress media_address = 8;                //媒体地址
+    required ProtoEndPointAddress multicast_select_path_address = 9;//组播选路地址
+    required ProtoEndPointAddress iperf_address = 10;               //iperf媒体地址
+
+    required uint32 rated_outbound_bandwidth = 11;                  //额定Relay上行带宽
+    required uint32 rated_inbound_bandwidth = 12;                   //额定Relay下行带宽
+    required uint32 rated_max_connections = 13;                     //额定最大连接数
+    required uint32 rated_max_sessions = 14;                        //额定最大会话数
+    required uint32 rated_cost = 15;                                //额定成本
+    required uint32 detection_num = 16;
+    required uint64 tick_time = 17;
+    required uint64 utc_time = 18;
+}
+//=============================================================================================================================
+//@since 1.0
+message ProtoMulticastLinkInfo {
+
+    enum NodeType {
+        USER = 0;
+        RELAY = 1;
+    }
+
+    required uint32 node_id = 1;
+    required NodeType node_type = 2;
+    required uint32 role_type = 3;
+    required string physical_link_id = 4;
+    required uint32 logical_link_id = 5;
+}
+
+//组播信息汇报
+//@since 1.0
+message ProtoMulticastInfo {
+
+    enum OperationType {
+        ADD = 0;
+        REMOVE = 1;
+    }
+
+    required uint64 multicast_id = 1;               //组播ID
+    required uint32 role_type = 2;                  //组播角色类型
+    required uint32 node_id = 3;                    // 自己的节点id
+    required uint32 node_type = 4;                  // 自己的节点类型
+    optional uint32 multicast_publish_version = 5;  //组播发布版本、有则填写没有添0，即无效版本信息
+    optional uint32 multicast_subscribe_version = 6;//组播订阅版本、只有订阅节点填写
+    repeated ProtoMulticastLinkInfo parents = 7;
+    repeated ProtoMulticastLinkInfo children = 8;
+    required OperationType operation_type = 9;
+    required uint64 tick_time = 10;
+    required uint64 utc_time = 11;
+}
+
+//=============================================================================================================================
+//组播事件汇报
+//@since 1.0
+message ProtoMulticastEventInfo {
+    required uint64 multicast_id = 1;                           //组播 ID
+    required string event_key = 2;                              //产生问题的订阅者用户 ID
+    required int32 event_type = 3;                              //事件类型
+    required string event_info = 4;                             //事件信息
+    required uint32 node_id = 5;                                //事件汇报的节点 ID
+    required ProtoMulticastLinkInfo.NodeType node_type = 6;     //事件汇报节点的类型
+    required string physical_link_id = 7;                       //物理链路 ID
+    required uint32 logical_link_id = 8;                        //逻辑链路 ID
+    required uint64 tick_time = 9;
+    required uint64 utc_time = 10;
+}
+
+//=============================================================================================================================
+//StatItemValue 统计数据定义
+//@since 2.0
+//@date 2018/2/1
+message ProtoStatItemValue {
+
+    message ProtoDataValue {
+
+        message ProtoBitmapValue {
+            required uint32 index = 1;      //4 字节全局索引，bitmap 采用定长结构，目前定义 64 个包为一个单元，索引号直接可标识包 ID 的范围
+            required uint64 bit_map = 2;    //8 字节：二进制位标识，1 代表数据包已接收，0 代表数据包未接收
+        }
+
+        required uint32 index = 1;                      //统计周期内索引
+        required uint32 sum = 2;                        //统计个数
+        required uint32 size = 3;                       //统计大小，单位 KByte
+        repeated ProtoBitmapValue bitmap_values = 4;    //包 ID bitmap 记录
+    }
+
+    message ProtoStatObjKey {
+
+        message ProtoStatObj {
+            required string obj_id = 1;     //统计对象 ID
+            required uint32 obj_type = 2;   //统计对象类型
+        }
+
+        required ProtoStatObj self = 1;         //统计对象
+        repeated ProtoStatObj associates = 2;   //关联的统计对象
+        required uint32 stat_type = 3;          //统计类型
+    }
+
+    required ProtoStatObjKey obj_key = 1;
+    repeated ProtoDataValue  data_values = 2;
+    required uint32 stat_interval = 3;          //统计周期，单位 s
+    required uint32 sub_stat_interval = 4;      //分片统计周期，单位 ms
+    required uint64 timestamp = 5;              //统计的起始时间（在统计时写入，未经校正的客户端时间）
+}
+
+//=============================================================================================================================
+//物理链路状态变化事件值定义
+//@since 2.0
+//@date 2018/2/1
+message ProtoPhysicalLinkChangeNotify {
+
+    enum PhysicalLinkState {
+        ONLINE = 0;     //在线
+        FLASH_OFF = 1;  //闪断
+        OFFLINE = 2;    //离线
+    }
+
+    required string physical_link_id = 1;       //物理链路 ID
+    required PhysicalLinkState old_state = 2;   //旧状态
+    required PhysicalLinkState new_state = 3;   //新状态
+}
+
+//=============================================================================================================================
+//物理链路销毁事件值定义
+//@since 2.0
+//@date 2018/2/1
+message ProtoPhysicalLinkDestroyNotify {
+    required string physical_link_id = 1;   //物理链路 ID
+    required uint32 direction = 2;          //站在汇报者角度上的方向
+}
+
+//=============================================================================================================================
+//物理链路事件汇报指令格式
+//@since 2.0
+//@date 2018/2/1
+message ProtoPhysicalLinkEvent {
+    required uint32 owner_id = 1;                                   //汇报者 ID
+    required uint32 owner_type = 2;                                 //汇报者类型
+	required uint32 event_type = 3;									//事件类型, 1   主动方创建物理链路成功
+																	//			2   被动方创建物理链路成功
+																	//			3   主动方关闭物理链路
+																	//			4   被动方关闭物理链路
+																	//			5   主动方物理链路状态变化
+																	//			6   被动方物理链路状态变化
+																	//			7   传输控制计算链路质量
+																	//			8   传输控制负载均衡后质量
+																	//			101 仿真机链路配置信息信息
+    optional ProtoPhysicalLinkInfo basic_info = 4;                  //物理链路基础信息，event_type = PLinkCreateEvent
+    optional ProtoPhysicalLinkChangeNotify change_notify = 5;       //物理链路状态变化信息
+    optional ProtoPhysicalLinkDestroyNotify destroy_notify = 6;     //物理链路销毁事件 value
+    optional ProtoPhysicalLinkQuality link_quality = 7;             //物理链路实时质量，预测质量或者仿真质量
+    required uint64 timestamp = 8;                                  //事件发生时间
+}
+
+//=============================================================================================================================
+//物理链路统计数据汇报格式
+//@since 2.0
+//@date 2018/2/1
+message ProtoPhysicalLinkStatData {
+    required uint32 owner_id = 1;                   //汇报者 ID
+    required uint32  owner_type = 2;                //汇报者类型
+    required ProtoStatItemValue item_value = 3;     //统计数据
+    required uint64 timestamp = 4;                  //统计数据的起始时间
+}
+
+//=============================================================================================================================
+//日志文件的数据编码结构
+//@since 1.0
+message ProtoMessage {
+    optional ProtoUserInfo user_info = 1;
+    optional ProtoRelayInfo relay_info = 2;
+    optional ProtoMulticastInfo multicast_info = 3;
+    optional ProtoMulticastEventInfo multicast_event_info = 4;
+    optional ProtoNicList nic_list = 5;
+    optional ProtoPhysicalLinkEvent link_event = 6;
+    optional ProtoPhysicalLinkStatData stat_data = 7;
+}
+
+//=============================================================================================================================
+//实时数据传输结构
+message ProtoMonitorMessage {
+
+    //消息类型枚举
+    enum MessageType {
+    	USER_INFO = 0;
+    	RELAY_INFO = 1;
+    	MULTICAST_INFO = 2;
+    	MULTICAST_EVENT_INFO = 3;
+    	NIC_LIST = 4;
+    	PHYSICAL_LINK_EVENT = 5;
+    	PHYSICAL_LINK_STAT_DATA = 6;
+    }
+
+	required MessageType  type = 1;
+	required string		  command_id = 2;
+	repeated bytes        msg = 3;          //ProtoMessage 类型
+}

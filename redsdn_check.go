@@ -9,8 +9,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/ootw/redsdn-check/redsdn"
-	"time"
 	"io"
+	"time"
 )
 
 const (
@@ -19,6 +19,7 @@ const (
 	checkFileName        = "checkFN="
 	bit           uint64 = 1
 	unit          uint32 = 64
+	superSend     uint32 = 121
 )
 
 func main() {
@@ -33,7 +34,7 @@ func main() {
 		fileName = strings.Split(args[2], equalSign)[1]
 	}
 
-	logFile, _ := os.Create(logPath + "/redsdn_check_log.log")
+	logFile, _ := os.Create(logPath + "/" + fileName + ".log")
 	logger := log.New(logFile, "// DEBUG: ", log.LstdFlags|log.Lshortfile)
 	logger.Printf("工具【%s】开始启动", programName)
 	defer logFile.Close()
@@ -102,7 +103,12 @@ func ParseProtoMessage(buf []byte, logger *log.Logger) {
 		statData := message.GetStatData()
 		itemValue := statData.GetItemValue()
 		dataValues := itemValue.GetDataValues()
+		objKey := itemValue.GetObjKey()
+		objId := objKey.GetSelf().GetObjId()
+		objType := objKey.GetSelf().GetObjType()
+		statType := objKey.GetStatType()
 		timestamp := statData.GetTimestamp()
+		//var packets []uint64
 		for _, dataValue := range dataValues {
 			bitmapValues := dataValue.GetBitmapValues()
 			sum := dataValue.GetSum()
@@ -121,10 +127,23 @@ func ParseProtoMessage(buf []byte, logger *log.Logger) {
 			sec := timestamp / 1000
 			nsec := timestamp % 1000 * 1000000
 			time := time.Unix(int64(sec), int64(nsec)).Format("2006-01-02 15:04:05.000")
-			if int(sum) != len(packetIds) {
-				logger.Printf("%s index=[%d] sum=[%d] size=[%d]KByte packetIds=%v",
-					time, dataValue.GetIndex(), sum, dataValue.GetSize(), packetIds)
+			//logger.Printf("%s timestamp=[%d] objId=[%s], objType=[%d], statType=[%d], index=[%d] sum=[%d] size=[%d]KByte packetIds=%v",
+			//	time, timestamp, objId, objType, statType, dataValue.GetIndex(), sum, dataValue.GetSize(), packetIds)
+
+			if int(sum) != len(packetIds) && objType == 121 && !strings.EqualFold(objId, "0") {
+				logger.Printf("%s timestamp=[%d] objId=[%s], objType=[%d], statType=[%d], index=[%d] sum=[%d] size=[%d]KByte packetIds=%v",
+					time, timestamp, objId, objType, statType, dataValue.GetIndex(), sum, dataValue.GetSize(), packetIds)
 			}
+
+			//if  statType == superSend && objType == 121 && !strings.EqualFold(objId, "0") && len(packets) != int(sum) {
+			//	logger.Printf("%s objId=[%s], objType=[%d], statType=[%d], index=[%d] sum=[%d] size=[%d]KByte packetIds=%v",
+			//		time, objId, objType, statType, dataValue.GetIndex(), sum, dataValue.GetSize(), packetIds)
+			//	packets = append(packets, packetIds...)
+			//}
+			//if statType == superSend && objType == 121 && !strings.EqualFold(objId, "0") {
+			//	logger.Printf("%s objId=[%s], objType=[%d], statType=[%d] packets=%v",
+			//		time, objId, objType, statType, packets)
+			//}
 		}
 		//logger.Println(message.GetStatData().String())
 	}
